@@ -6,7 +6,8 @@ from optparse import OptionParser
 
 usage = "Usage: %prog [OPTION]"
 parser = OptionParser(usage=usage)
-parser.add_option("-c", dest="c_ratio", help="Carbon ration in the elemental analysis.")
+parser.add_option("-c", dest="c_ratio", help="Carbon ratio in the elemental analysis.")
+parser.add_option("-x", dest="x_ratio", help="Substituent ratio in the elemental analysis.")
 parser.add_option("-m", dest="subst", help="Type of substituent.")
 parser.add_option("-e", dest="raw_formula", help="Displays elemental composition of the formula.")
 
@@ -54,11 +55,17 @@ def get_element_ratios(formula):
 
     return element_ratios
 
-def get_ds_mono(mw_subst, c_ratio):
+def get_ds_c_ratio(mw_subst, c_ratio):
     """ Calculates the DS when only one type of substituent with mol weight
     mw_subst is present in the cellulose. The DS is determined according
     to the percentage of carbon in the elemental analysis."""
     return -3 * (54047 * c_ratio - 24022) / ((1000 * mw_subst - 17007) * c_ratio)
+
+def get_ds_x_ratio(mw_subst, x_ratio):
+    mw_c = get_mw("C")
+    mw_h = get_mw("H")
+    mw_o = get_mw("O")
+    return x_ratio * (6 * mw_c + 10 * mw_h + 5 * mw_o) / (mw_subst + x_ratio * (mw_h + mw_o - mw_subst))
 
 def input_elemental_analysis(formula):
     print("Enter your elemental analysis (in %)")
@@ -76,6 +83,7 @@ if __name__ == "__main__":
     options, args = parser.parse_args()
     raw_formula = options.raw_formula
     c_ratio = options.c_ratio
+    x_ratio = options.x_ratio
     subst = options.subst
     if raw_formula is not None:
         formula = parse_formula(raw_formula)
@@ -83,6 +91,10 @@ if __name__ == "__main__":
         for item in ratios:
             element, ratio = item
             print("{}\t{:.3%}".format(element, ratio))
-    if (c_ratio is not None) and (subst is not None):
+	print("Total molweight in g/mol: {0}".format(get_total_mw(formula)))
+    if subst is not None:
         mw_subst = get_mw(subst)
-        print("DS: {:.3}".format(get_ds_mono(mw_subst, float(c_ratio))))
+	if c_ratio is not None:
+            print("DS by C ratio: {:.3}".format(get_ds_c_ratio(mw_subst, float(c_ratio))))
+	if x_ratio is not None:
+            print("DS by X ratio: {:.3}".format(get_ds_x_ratio(mw_subst, float(x_ratio))))
