@@ -6,10 +6,13 @@ from optparse import OptionParser
 
 usage = "Usage: %prog [OPTION]"
 parser = OptionParser(usage=usage)
-parser.add_option("-c", dest="c_ratio", help="Carbon ratio in the elemental analysis.")
-parser.add_option("-x", dest="x_ratio", help="Substituent ratio in the elemental analysis.")
+parser.add_option("-c", dest="c_ratio", help="DS calculation by carbon-ratio in the EA. Used with -m.")
+parser.add_option("-x", dest="x_ratio", help="DS calculation by substituent-ratio in the EA. Used with -m.")
 parser.add_option("-m", dest="subst", help="Type of substituent.")
-parser.add_option("-e", dest="raw_formula", help="Displays elemental composition of the formula.")
+parser.add_option("-e", dest="raw_formula", help="Elemental composition of the formula.")
+parser.add_option("-w", dest="mw_by_ds", action="store_true", help="MW of substituted AGU according to the DS. Used \
+                    with -d and -m.")
+parser.add_option("-d", dest="x_ds", help="DS of the substituent.")
 
 TOKENS = {"H" : 1.0079,
             "C" : 12.011,
@@ -45,6 +48,13 @@ def get_total_mw(formula):
 
     return total_mw
 
+def get_mw_by_ds(subst, subst_ratio):
+    mw_subst = get_mw(subst)
+    agu_mw = get_total_mw(parse_formula("C6H10O5"))
+    agu_subst_mw = agu_mw + mw_subst - get_total_mw(parse_formula("OH"))
+    
+    return (1 - subst_ratio) * agu_mw + (subst_ratio * agu_subst_mw)
+
 def get_element_ratios(formula):
     element_ratios = list()
     total_mw = get_total_mw(formula)
@@ -55,16 +65,20 @@ def get_element_ratios(formula):
 
     return element_ratios
 
-def get_ds_c_ratio(mw_subst, c_ratio):
+def get_ds_c_ratio(subst, c_ratio):
     """ Calculates the DS when only one type of substituent with mol weight
     mw_subst is present in the cellulose. The DS is determined according
     to the percentage of carbon in the elemental analysis."""
+    mw_subst = get_mw(subst)
     return -3 * (54047 * c_ratio - 24022) / ((1000 * mw_subst - 17007) * c_ratio)
 
 def get_ds_x_ratio(mw_subst, x_ratio):
+    """ Calculates the DS using the ratio of the specified
+    substituent according to the elemental analysis."""
     mw_c = get_mw("C")
     mw_h = get_mw("H")
     mw_o = get_mw("O")
+    mw_subst = get_mw(subst)
     return x_ratio * (6 * mw_c + 10 * mw_h + 5 * mw_o) / (mw_subst + x_ratio * (mw_h + mw_o - mw_subst))
 
 def input_elemental_analysis(formula):
@@ -85,16 +99,21 @@ if __name__ == "__main__":
     c_ratio = options.c_ratio
     x_ratio = options.x_ratio
     subst = options.subst
-    if raw_formula is not None:
+    mw_by_ds = options.mw_by_ds
+    x_ds = options.x_ds
+    if raw_formula:
         formula = parse_formula(raw_formula)
         ratios = get_element_ratios(formula)
         for item in ratios:
             element, ratio = item
             print("{}\t{:.3%}".format(element, ratio))
-	print("Total molweight in g/mol: {0}".format(get_total_mw(formula)))
-    if subst is not None:
-        mw_subst = get_mw(subst)
-	if c_ratio is not None:
-            print("DS by C ratio: {:.3}".format(get_ds_c_ratio(mw_subst, float(c_ratio))))
-	if x_ratio is not None:
-            print("DS by X ratio: {:.3}".format(get_ds_x_ratio(mw_subst, float(x_ratio))))
+        print("Total molweight in g/mol: {0}".format(get_total_mw(formula)))
+    if c_ratio and subst:
+            print("DS of {}-substituted AGU with C-ratio {}: {:.3}".format(
+                subst, c_ratio, get_ds_c_ratio(subst, float(c_ratio))))
+    if x_ratio and subst:
+            print("DS of {}-substituted AGU with by X-ratio {}: {:.3}".format(
+                subst, x_ratio, get_ds_x_ratio(subst, float(x_ratio))))
+    if mw_by_ds and subst and x_ds:
+        print("MW of {}-substituted AGU with DS {} is {:.5}".format(
+                subst, x_ds, get_mw_by_ds(subst, float(x_ds))))
