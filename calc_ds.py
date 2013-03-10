@@ -133,4 +133,4 @@ if __name__ == "__main__":
                 subst, x_ds, get_mw_by_ds(subst, float(x_ds))))
     if comp_by_ds:
         x_ds, subst = comp_by_ds
-        print_ratios(get_comp_by_ds(int(x_ds), subst))
+        print_ratios(get_comp_by_ds(float(x_ds), subst))
