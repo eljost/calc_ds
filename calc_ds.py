@@ -10,6 +10,8 @@ parser.add_option("-c", dest="c_ratio", help="DS calculation by carbon-ratio in 
 parser.add_option("-x", dest="x_ratio", help="DS calculation by substituent-ratio in the EA. Used with -m.")
 parser.add_option("-m", dest="subst", help="Type of substituent.")
 parser.add_option("-e", dest="raw_formula", help="Elemental composition of the formula.")
+parser.add_option("-E", dest="comp_by_ds", nargs=2,
+                    help="Elemental composition according to the DS of a substituent.")
 parser.add_option("-w", dest="mw_by_ds", action="store_true", help="MW of substituted AGU according to the DS. Used \
                     with -d and -m.")
 parser.add_option("-d", dest="x_ds", help="DS of the substituent.")
@@ -67,6 +69,11 @@ def get_element_ratios(raw_formula):
 
     return element_ratios
 
+def get_comp_by_ds(ds_x, subst):
+    raw_formula = "C6H{}O{}{}{}".format(10 - ds_x, 5 - ds_x, subst, ds_x)
+    print raw_formula
+    return get_element_ratios(raw_formula)
+
 def get_ds_c_ratio(subst, c_ratio):
     """ Calculates the DS when only one type of substituent with mol weight
     mw_subst is present in the cellulose. The DS is determined according
@@ -96,6 +103,11 @@ def input_elemental_analysis(raw_formula):
 
     return elemental_analysis        
 
+def print_ratios(ratios):
+    for item in ratios:
+        element, ratio = item
+        print("{}\t{:.3%}".format(element, ratio))
+
 if __name__ == "__main__":
     options, args = parser.parse_args()
     raw_formula = options.raw_formula
@@ -104,11 +116,11 @@ if __name__ == "__main__":
     subst = options.subst
     mw_by_ds = options.mw_by_ds
     x_ds = options.x_ds
+    comp_by_ds = options.comp_by_ds
+
     if raw_formula:
         ratios = get_element_ratios(raw_formula)
-        for item in ratios:
-            element, ratio = item
-            print("{}\t{:.3%}".format(element, ratio))
+        print_ratios(ratios)
         print("Total molweight in g/mol: {0}".format(get_total_mw(raw_formula)))
     if c_ratio and subst:
             print("DS of {}-substituted AGU with C-ratio {}: {:.3}".format(
@@ -119,3 +131,6 @@ if __name__ == "__main__":
     if mw_by_ds and subst and x_ds:
         print("MW of {}-substituted AGU with DS {} is {:.5}".format(
                 subst, x_ds, get_mw_by_ds(subst, float(x_ds))))
+    if comp_by_ds:
+        x_ds, subst = comp_by_ds
+        print_ratios(get_comp_by_ds(int(x_ds), subst))
