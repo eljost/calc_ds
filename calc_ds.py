@@ -15,14 +15,20 @@ parser.add_option("-E", dest="comp_by_ds", nargs=2,
 parser.add_option("-w", dest="mw_by_ds", action="store_true", help="MW of substituted AGU according to the DS. Used \
                     with -d and -m.")
 parser.add_option("-d", dest="x_ds", help="DS of the substituent.")
+parser.add_option("--tms", dest="tms", nargs=3, help="Calculate TMS-DS via Si content. Args: Subst, DS of subst, Si-mass-fraction.")
 
-TOKENS = {"H" : 1.0079,
+M = {"H" : 1.0079,
             "C" : 12.011,
             "N" : 14.007,
             "O" : 15.999,
             "Cl" : 35.453,
             "Br" : 79.904,
             "Si" : 28.086}
+
+M_H = M["H"]
+M_C = M["C"]
+M_O = M["O"]
+M_Si = M["Si"]
 
 def parse_formula(raw_formula):
     formula = list()
@@ -40,7 +46,7 @@ def parse_formula(raw_formula):
     return formula
 
 def get_mw(element):
-    return TOKENS[element]
+    return M[element]
 
 def get_total_mw(raw_formula):
     formula = parse_formula(raw_formula)
@@ -90,6 +96,14 @@ def get_ds_x_ratio(subst, x_ratio):
     mw_subst = get_mw(subst)
     return x_ratio * (6 * mw_c + 10 * mw_h + 5 * mw_o) / (mw_subst + x_ratio * (mw_h + mw_o - mw_subst))
 
+def get_tms_ds(subst, x_ds, mpc):
+    """ Calculates the DS of TMS from Si-mass percentage from
+    a gravimetric analysis, e.g. via SiO2."""
+    M_X = get_mw(subst)
+    num = mpc * (M_O*(5-x_ds) + M_X*x_ds + 6*M_C + M_H*(10-x_ds))
+    denom = M_Si - mpc*(3*M_C + 9*M_H + M_Si)
+    return num / denom
+
 def input_elemental_analysis(raw_formula):
     formula = parse_formula(raw_formula)
     print("Enter your elemental analysis (in %)")
@@ -132,5 +146,13 @@ if __name__ == "__main__":
         print("MW of {}-substituted AGU with DS {} is {:.5}".format(
                 subst, x_ds, get_mw_by_ds(subst, float(x_ds))))
     if comp_by_ds:
-        x_ds, subst = comp_by_ds
-        print_ratios(get_comp_by_ds(float(x_ds), subst))
+        ds_x, subst = comp_by_ds
+        ds_x = float(ds_x)
+        print_ratios(get_comp_by_ds(ds_x, subst))
+        raw_formula = "C6H{}O{}{}{}".format(10 - ds_x, 5 - ds_x, subst, ds_x)
+        print("Total molweight in g/mol: {0}".format(get_total_mw(raw_formula)))
+    if options.tms:
+        subst, x_ds, mf = options.tms
+        x_ds = float(x_ds)
+        mf = float(mf)
+        print("DS of TMS is: {:.3}".format(get_tms_ds(subst, x_ds, mf)))
